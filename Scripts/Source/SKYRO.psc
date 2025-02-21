@@ -3,20 +3,21 @@ import PapyrusUtil
 import StringUtil
 import SKYROUtil
 
-SKYROUtil Utils
-
-
 string SR_ModName = "SKYRO.esp"
 
-string SRPath_ObjectiveMap = "Data/SkyRomance/ObjectiveMap.json"
-string SRPath_QuestMap = "Data/SkyRomance/QuestMap.json"
-string SRPath_GivenGiftsLog = "Data/SkyRomance/Log/GivenGiftsLog.json"
-string SRPath_NPCFavorGift = "Data/SkyRomance/NPCFavorGift.json"
+string Property SRPath_ObjectiveMap = "Data/SkyRomance/ObjectiveMap.json" auto
+string Property SRPath_QuestMap = "Data/SkyRomance/QuestMap.json" auto
+string Property SRPath_GivenGiftsLog = "Data/SkyRomance/Log/GivenGiftsLog.json" auto
+string Property SRPath_NPCFavorGift = "Data/SkyRomance/NPCFavorGift.json" auto
 
 ;Quest Function Related
 Quest RecentQuest
 int RecentFailedQuest
 int RecentCompletedQuest
+
+string property SRKey_FactionFame = "SRK_FactionFame" auto
+string Property SRKey_QuestFavor = "SRK_QuestFavor" auto
+string property SRKey_GiftFavor = "SRK_GiftFavor" auto
 
 
 Event Oninit()
@@ -31,7 +32,7 @@ EndEvent
 
 Event OnQuestObjectiveStateChangedGlobal(Quest akQuest, string displayText, int oldState, int newState, int objectiveIndex, alias[] ojbectiveAliases)
 	;Dormant = 0;Displayed = 1;Completed = 2;CompletedDisplayed = 3;Failed = 4;FailedDisplayed = 5
-	debug.trace("Quest objective changed: " + objectiveIndex + "/" + displayText + "\n" + "newState: " + newState + " | oldState: " + oldState)
+	;debug.trace("Quest objective changed: " + objectiveIndex + "/" + displayText + "\n" + "newState: " + newState + " | oldState: " + oldState)
 
 	RecentQuest = akQuest
 	If RecentQuest.IsStopped()	;Send quest completed/failed event
@@ -80,12 +81,13 @@ Event OnKeyDown(int KeyPress)
         OnQuestCompletedEvent("0", "MS13", 0, game.getplayer() as form)
 	Endif
 EndEvent
+
 ;---------------------------------------------On Quest Update Event----------------------------------------------------------
 Event OnQuestCompletedEvent(String _eventName, String _args, Float _argc = 1.0, Form _sender)
 	;_args: EditorID
 	;_argc: FormID
 	;Map validation
-	If (Utils.isDebugEnable())
+	If (SKYROUtil.isDebugEnable())
 		Debug.Notification("Mod Event: " + _args + ": is completed")
 	EndIf
 	int QuestMap = JValue.readFromFile(SRPath_QuestMap)
@@ -96,7 +98,7 @@ Event OnQuestCompletedEvent(String _eventName, String _args, Float _argc = 1.0, 
 		;ReadString
 		String RelationShipChangelist = JMap.getStr(QuestMap, _args)
 		If (RelationShipChangelist != "")
-			SKYROUtil.ProcessAffinityUpdateString(RelationShipChangelist)
+			SKYROUtil.ProcessAffinityUpdateString(RelationShipChangelist, _args)
 		Else
 			Debug.Notification("Invalid or can't find Quest EditorID: " + _args + " !")
 		Endif
@@ -112,6 +114,10 @@ Event OnQuestObjectiveUpdatedEvent(String _eventName, String _args, Float _argc 
 	;_args: EditorID
 	;_argc: Completed objective
 	;Map validation
+	If (SKYROUtil.isDebugEnable())
+		Debug.Notification("Mod Event: " + _args + "/" + _argc + ": is completed")
+	EndIf
+
 	int Index = _argc as int
 	int ObjectiveMap = JValue.readFromFile(SRPath_ObjectiveMap)
 	if (ObjectiveMap == 0)
@@ -123,9 +129,9 @@ Event OnQuestObjectiveUpdatedEvent(String _eventName, String _args, Float _argc 
 	String Objective = _args + "/" + Index
 	String RelationShipChangelist = JMap.getStr(ObjectiveMap, Objective)
 	If (RelationShipChangelist != "")
-		Utils.ProcessAffinityUpdateString(RelationShipChangelist)
+		SKYROUtil.ProcessAffinityUpdateString(RelationShipChangelist, _args + "/" + _argc as int)
 	Else
-		If (Utils.isDebugEnable())
+		If (SKYROUtil.isDebugEnable())
 			Debug.Notification("Invalid Quest objective EditorID! \nOr can't find objective in QuestMap.json:\n" + Objective)
 		EndIf
 	Endif
@@ -142,4 +148,23 @@ EndFunction
 Function InitDebugFunction()
     RegisterForKey(34)
 	RegisterForKey(35)
+EndFunction
+
+Function WriteAddedItemsToJson(string[] itemkey, int[] count)
+    SKYRO Main = SKYROUtil.GetMainScript()
+	int fMap =  JMap.object()
+	
+	int len = itemkey.Length
+	int i = 0
+	string DebugString = "These items are given:"
+	while i < len
+		DebugString += "\n" + itemkey[i] + " x" + count[i]
+		JMap.setInt(fMap, itemkey[i], count[i])
+		i += 1
+	Endwhile
+	JValue.writeToFile(fMap, Main.SRPath_GivenGiftsLog)
+
+	If (SKYROUtil.isDebugEnable())
+		Debug.MessageBox(DebugString)
+	EndIf
 EndFunction

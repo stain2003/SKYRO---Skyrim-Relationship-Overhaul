@@ -1,31 +1,17 @@
 Scriptname SKYROUtil  Hidden 
 import StringUtil
+import SKYROMisc
 
-string ModName = "SKYRO.esp"
-int MainQuestID = 0x000001
-int GVSRDebugEnabled = 0x001001
 
-string Property SRKey_FactionFame = "SRK_FactionFame" Auto
-string Property SRKey_QuestFavor = "SRK_QuestFavor" Auto
-string Property SRKey_GiftFavor = "SRK_GiftFavor" Auto
+;------------UTIL FUNCTIONS-------------
+Function ProcessAffinityUpdateString(String inputString, String QuestEDID = "") Global
+	SKYRO main = GetMainScript()
 
-Form Function GetFormByEditorID(string refEditorID) Global native
-
-int Function GetExternalInt(string modesp, int id)
-	return (game.GetFormFromFile(id, modesp) as GlobalVariable).GetValueInt()
-endfunction
-
-bool Function isDebugEnable()
-	return (GetExternalInt(ModName, GVSRDebugEnabled) == 1)
-EndFunction
-
-Function ProcessAffinityUpdateString(String inputString)
-	Debug.MessageBox("Processing String!!!")
 	;This function is used to update Npc's QuestFavor stat and FactionAffinity stat towards Player
 	string[] SplitedStrings = Split(inputString, "|")
 	int StrNum = SplitedStrings.Length
 	int iter = 0
-	string outputstring = "Quest Objective Completed! NPC's SV has changed:"
+	string outputstring = QuestEDID + " Completed! NPC's SV has changed:"
 	int FavorValue
 	while iter < StrNum
 		String CurString = SplitedStrings[iter]
@@ -38,11 +24,11 @@ Function ProcessAffinityUpdateString(String inputString)
 			If (CurNPC) 
 				;------------------------look for npcs entry----------------------------
 				IncreaseQuestFavor(CurNPC, FavorValue)
-				outputstring = outputstring + "\n" + CurString + ": " + FavorValue + ", now is " + GetNPCFavor(CurNPC, SRKey_QuestFavor)
+				outputstring = outputstring + "\n" + CurString + ": " + FavorValue + ", now is " + GetNPCFavor(CurNPC, Main.SRKey_QuestFavor)
 			elseif (CurFaction)
 				;------------------------look for faction entry------------------------
 				IncreaseFactionFame(CurFaction,  FavorValue)
-				outputstring = outputstring + "\n" + CurString + ": " + FavorValue + ", now is " + StorageUtil.GetIntValue(curForm, SRKey_FactionFame)
+				outputstring = outputstring + "\n" + CurString + ": " + FavorValue + ", now is " + StorageUtil.GetIntValue(curForm, Main.SRKey_FactionFame)
 			Elseif (isDebugEnable())
 				Debug.Notification("This editorID is not what we look for: " + CurString)
 				Debug.trace("This editorID is not what we look for: " + CurString)
@@ -68,9 +54,12 @@ Function ProcessAffinityUpdateString(String inputString)
 	EndIf
 EndFunction
 
-;-----------Set and get value from StorageUtil--------------------
+;-----------GETTER & SETTER---------------
+Function IncreaseFactionFame(Faction inFaction, int inValue) Global
+	string SRKey_FactionFame = "SRK_FactionFame"
+	string SRKey_QuestFavor = "SRK_QuestFavor"
+	string SRKey_GiftFavor = "SRK_GiftFavor"
 
-Function IncreaseFactionFame(Faction inFaction, int inValue)
 	int CurVal = StorageUtil.GetIntValue(inFaction as Form, SRKey_FactionFame)
 	StorageUtil.SetIntValue(inFaction as Form, SRKey_FactionFame, curVal + inValue)
 
@@ -83,12 +72,20 @@ Function IncreaseFactionFame(Faction inFaction, int inValue)
 	EndIf
 EndFunction
 
-Function IncreaseGiftFavor(Actor NPC, int inValue)
+Function IncreaseGiftFavor(Actor NPC, int inValue) Global
+	string SRKey_FactionFame = "SRK_FactionFame"
+	string SRKey_QuestFavor = "SRK_QuestFavor"
+	string SRKey_GiftFavor = "SRK_GiftFavor"
+
 	int CurVal = StorageUtil.GetIntValue(NPC, SRKey_GiftFavor)
 	StorageUtil.SetIntValue(NPC, SRKey_GiftFavor, curVal + inValue)
 EndFunction
 
-Function IncreaseQuestFavor(Actor NPC, int invalue)
+Function IncreaseQuestFavor(Actor NPC, int invalue) Global
+	string SRKey_FactionFame = "SRK_FactionFame"
+	string SRKey_QuestFavor = "SRK_QuestFavor"
+	string SRKey_GiftFavor = "SRK_GiftFavor"
+
 	;This function will increase Npc's QuestFavor value for a permenant impact, also like stat for a tempory 'buff'.
 	int curVal = GetNPCFavor(NPC, SRKey_QuestFavor)
 	If (curVal < 20)
@@ -103,11 +100,16 @@ Function IncreaseQuestFavor(Actor NPC, int invalue)
 	EndIf
 Endfunction
 
-int Function GetNPCFavor(Actor NPC, string inKey)
+int Function GetNPCFavor(Actor NPC, string inKey) Global
 	return StorageUtil.GetIntValue(NPC, inKey)
 EndFunction
 
-int Function GetNPCFactionFavor(Actor NPC)
+int Function GetNPCFactionFavor(Actor NPC) Global
+
+	string SRKey_FactionFame = "SRK_FactionFame"
+	string SRKey_QuestFavor = "SRK_QuestFavor"
+	string SRKey_GiftFavor = "SRK_GiftFavor"
+
 	Faction[] FactionList = NPC.GetFactions(0, 127)
 	int FactionIndex = FactionList.Length
 	int FactionFavorSum
@@ -116,4 +118,16 @@ int Function GetNPCFactionFavor(Actor NPC)
 		FactionFavorSum += StorageUtil.GetIntValue(FactionList[FactionIndex], SRKey_FactionFame)
 	EndWhile
 	return FactionFavorSum
+EndFunction
+
+SKYRO Function GetMainScript() Global
+	return Game.GetFormFromFile(0x000001, "SKYRO.esp") as SKYRO
+EndFunction
+
+int Function GetExternalInt(string modesp, int id) Global
+	return (game.GetFormFromFile(id, modesp) as GlobalVariable).GetValueInt()
+endfunction
+
+bool Function isDebugEnable() Global
+	return (GetExternalInt("SKYRO.esp", 0x001001) == 1)
 EndFunction
