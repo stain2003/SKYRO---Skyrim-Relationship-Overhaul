@@ -25,17 +25,22 @@ Function ProcessAffinityUpdateString(String inputString, String QuestEDID = "") 
 				;------------------------look for npcs entry----------------------------
 				IncreaseQuestFavor(CurNPC, FavorValue)
 				outputstring = outputstring + "\n" + CurString + ": " + FavorValue + ", now is " + GetNPCFavor(CurNPC, Main.SRKey_QuestFavor)
+
 			elseif (CurFaction)
 				;------------------------look for faction entry------------------------
 				IncreaseFactionFame(CurFaction,  FavorValue)
 				outputstring = outputstring + "\n" + CurString + ": " + FavorValue + ", now is " + StorageUtil.GetIntValue(curForm, Main.SRKey_FactionFame)
+			
 			Elseif (isDebugEnable())
 				Debug.Notification("This editorID is not what we look for: " + CurString)
 				Debug.trace("This editorID is not what we look for: " + CurString)
+			
 			endif
+		
 		else
 			;Update SVOffset
 			FavorValue = Substring(CurString, 1, GetLength(CurString) - 1) as int
+			
 			if (FavorValue == 0 && isDebugEnable())
 				Debug.Notification("Invalid editorID entry: " + CurString)
 				Debug.trace("Invalid editorID entry: " + CurString + " | Source: " + inputString)
@@ -45,13 +50,97 @@ Function ProcessAffinityUpdateString(String inputString, String QuestEDID = "") 
 			If (FirstChar == "-")
 				FavorValue = -FavorValue
 			EndIf
+		
 		EndIf
 		iter += 1
 	EndWhile
+	
 	If (isDebugEnable())
 		debug.Trace(outputstring)
 		debug.messagebox(outputstring)
 	EndIf
+EndFunction
+
+Function ProcessGifts(Actor NPC, float TotalValue) Global
+	;Get map: 1. Given gifts 2. Npc favor gift keywords
+	int GivenGiftLog = JValue.readFromFile(GetMainScript().SRPath_GivenGiftsLog)
+	string[] GiftEditID = JMap.allKeysPArray(GivenGiftLog)
+
+	int NPCFavorMap = JValue.readFromFile(GetMainScript().SRPath_NPCFavorGift)
+	string NPCFavorString = JMap.getStr(NPCFavorMap, NPC.GetDisplayName())
+	string[] NPCFavorList = Split(NPCFavorString, "|")
+	Debug.Trace(NPC.GetDisplayName() + "'s Favor string: " + NPCFavorString)
+
+	;Make a map for Npc's favor gift type/keyword
+	Debug.Trace("Now making a map to store " + NPC.GetDisplayName() + "'s favor keywords of gifts!")
+	int FavorGiftMap = JMap.object()
+	int j = 0
+	int jLen = NPCFavorList.Length
+	int FavorValue
+	while (j < jLen)
+		string CurString = NPCFavorList[j]
+		Debug.trace("Current string: " + CurString)
+		If (Substring(CurString, 0, 1) != "-" && Substring(CurString, 0, 1) != "+")
+			JMap.Setint(FavorGiftMap, CurString, FavorValue)
+			debug.trace("Favor keyword added: " + CurString + ": " + FavorValue + " ! ")
+		Else
+			FavorValue = Substring(CurString, 1, GetLength(CurString) - 1) as int
+			if (Substring(CurString, 0, 1) == "-")
+				FavorValue = -FavorValue
+			Endif
+			Debug.Trace("Favor value changed to: " + FavorValue)
+		EndIf
+		j += 1
+	Endwhile
+	;End of making map
+
+	;Loop through all gifts, fore each type of gift, get npc's favors, and find if any of them in current 
+	int Len = GiftEditID.Length
+	int i = 0
+	int GiftFavorToAdd
+	While (i < Len)	
+		;--------------------------------------Gifts loop---------------------------------------
+		;Current gift
+		Debug.Trace("Current gift: " + GiftEditID[i])
+		string CurGift = GiftEditID[i]
+		Form CurGiftForm = GetFormByEditorID(CurGift)
+		Keyword[] GiftKeywords = CurGiftForm.GetKeywords()
+
+		int k = 0
+		int keywordLen = GiftKeywords.Length
+		if (JMap.hasKey(FavorGiftMap, CurGift))
+			;if this gift is in NPC's favor list
+			int GiftFavor = JMap.getInt(FavorGiftMap, CurGift) * JMap.getInt(GivenGiftLog, CurGift)
+			GiftFavorToAdd += GiftFavor
+		Else
+			While (k < keywordLen)
+				;-------------------------------Keywords loop---------------------------------------
+				Debug.Trace("Searching for keyword in NPC's interest list: " + GiftKeywords[k].GetString())
+				;Current keyword
+				string CurKeyword = GiftKeywords[k].GetString()
+				if (JMap.hasKey(FavorGiftMap, CurKeyword))
+					;If this keyword is in NPC's favor list
+					int CurKeywordFavorValue = JMap.getInt(FavorGiftMap, CurKeyword) * JMap.getInt(GivenGiftLog, CurGift)
+					GiftFavorToAdd += curkeywordfavorvalue
+				Endif
+				k += 1
+			EndWhile
+		Endif
+		i += 1
+	EndWhile
+
+	;Set gift favor sv for NPC
+	GiftFavorToAdd = (GiftFavorToAdd * (TotalValue / 100)) as int
+	IncreaseGiftFavor(NPC, GiftFavorToAdd)
+	Debug.Trace("Gift favor added: " + GiftFavorToAdd + " ! ")
+EndFunction
+
+String Function PrintNPCAffinity(Actor NPC) Global
+	String OutputString = NPC.GetDisplayName() + "'s Affinity:"
+	OutputString += "\nQuest Favor: " + GetNPCFavor(NPC, GetMainScript().SRKey_QuestFavor)
+	OutputString += "\nGift Favor: " + GetNPCFavor(NPC, GetMainScript().SRKey_GiftFavor)
+	OutputString += "\nFaction Fame: " + GetNPCFactionFavor(NPC)
+	return OutputString
 EndFunction
 
 ;-----------GETTER & SETTER---------------
@@ -105,19 +194,19 @@ int Function GetNPCFavor(Actor NPC, string inKey) Global
 EndFunction
 
 int Function GetNPCFactionFavor(Actor NPC) Global
-
-	string SRKey_FactionFame = "SRK_FactionFame"
-	string SRKey_QuestFavor = "SRK_QuestFavor"
-	string SRKey_GiftFavor = "SRK_GiftFavor"
-
 	Faction[] FactionList = NPC.GetFactions(0, 127)
-	int FactionIndex = FactionList.Length
-	int FactionFavorSum
-	While (FactionIndex)
+	string FactionFameKey = GetMainScript().SRKey_FactionFame
+	Int FactionIndex = FactionList.Length
+	Int FactionFameSum
+
+	while FactionIndex
 		FactionIndex -= 1
-		FactionFavorSum += StorageUtil.GetIntValue(FactionList[FactionIndex], SRKey_FactionFame)
+		if(StorageUtil.HasIntValue(FactionList[FactionIndex], FactionFameKey))
+			FactionFameSum += StorageUtil.GetIntValue(FactionList[FactionIndex], FactionFameKey)
+		EndIf
 	EndWhile
-	return FactionFavorSum
+
+	Return FactionFameSum
 EndFunction
 
 SKYRO Function GetMainScript() Global

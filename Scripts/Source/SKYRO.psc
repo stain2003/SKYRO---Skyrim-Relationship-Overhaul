@@ -3,7 +3,7 @@ import PapyrusUtil
 import StringUtil
 import SKYROUtil
 
-string SR_ModName = "SKYRO.esp"
+string Property SR_ModName = "SKYRO.esp" auto
 
 string Property SRPath_ObjectiveMap = "Data/SkyRomance/ObjectiveMap.json" auto
 string Property SRPath_QuestMap = "Data/SkyRomance/QuestMap.json" auto
@@ -87,9 +87,6 @@ Event OnQuestCompletedEvent(String _eventName, String _args, Float _argc = 1.0, 
 	;_args: EditorID
 	;_argc: FormID
 	;Map validation
-	If (SKYROUtil.isDebugEnable())
-		Debug.Notification("Mod Event: " + _args + ": is completed")
-	EndIf
 	int QuestMap = JValue.readFromFile(SRPath_QuestMap)
 	if (QuestMap == 0)
 		debug.Notification("Invalid QuestMap.Json!!!")
@@ -114,10 +111,6 @@ Event OnQuestObjectiveUpdatedEvent(String _eventName, String _args, Float _argc 
 	;_args: EditorID
 	;_argc: Completed objective
 	;Map validation
-	If (SKYROUtil.isDebugEnable())
-		Debug.Notification("Mod Event: " + _args + "/" + _argc + ": is completed")
-	EndIf
-
 	int Index = _argc as int
 	int ObjectiveMap = JValue.readFromFile(SRPath_ObjectiveMap)
 	if (ObjectiveMap == 0)
