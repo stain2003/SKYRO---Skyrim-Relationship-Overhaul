@@ -62,87 +62,82 @@ Function ProcessAffinityUpdateString(String inputString, String QuestEDID = "") 
 EndFunction
 
 Function ProcessGifts(Actor NPC, float TotalValue) Global
-	;Get map: 1. Given gifts 2. Npc favor gift keywords
+	;Make maps: 1. Given gifts 2. Npc favor
 	int GivenGiftLog = JValue.readFromFile(GetMainScript().SRPath_GivenGiftsLog)
 	string[] GiftEditID = JMap.allKeysPArray(GivenGiftLog)
 
 	int NPCFavorMap = JValue.readFromFile(GetMainScript().SRPath_NPCFavorGift)
 	string NPCFavorString = JMap.getStr(NPCFavorMap, NPC.GetDisplayName())
 	string[] NPCFavorList = Split(NPCFavorString, "|")
+
 	Debug.Trace(NPC.GetDisplayName() + "'s Favor string: " + NPCFavorString)
 
-	; int GiftIndex = GiftEditID.Length
-	; If (GiftIndex == 0)
-	; 	Debug.Trace("You didn't give anything")
-	; Else
-	; 	While GiftIndex 
-	; 		GiftIndex -= 1
-	; 		Debug.Trace("You gave away " + GiftEditID[GiftIndex])
-	; 	EndWhile
-	; EndIf
-	;Make a map for Npc's favor gift type/keyword
 	Debug.Trace("Now making a map to store " + NPC.GetDisplayName() + "'s favor keywords of gifts!")
+
 	int FavorGiftMap = JMap.object()
-	int j = 0
-	int jLen = NPCFavorList.Length
+	int FavorIndex = NPCFavorList.Length
 	int FavorValue
-	while (j < jLen)
-		string CurString = NPCFavorList[j]
-		Debug.trace("Current string: " + CurString)
-		If (Substring(CurString, 0, 1) != "-" && Substring(CurString, 0, 1) != "+")
-			JMap.Setint(FavorGiftMap, CurString, FavorValue)
-			debug.trace("Favor keyword added: " + CurString + ": " + FavorValue + " ! ")
-		Else
-			FavorValue = Substring(CurString, 1, GetLength(CurString) - 1) as int
-			if (Substring(CurString, 0, 1) == "-")
-				FavorValue = -FavorValue
+	while (FavorIndex)
+		FavorIndex -= 1
+		string CurFavor = NPCFavorList[FavorIndex]
+		Debug.trace("Current string: " + CurFavor)
+
+		If (Substring(CurFavor, 0, 1) != "-" && Substring(CurFavor, 0, 1) != "+") ;Check if this string is a keyword
+			JMap.Setint(FavorGiftMap, CurFavor, FavorValue)
+			debug.trace("Favor keyword added: " + CurFavor + ": " + FavorValue + " ! ")
+		Else; this string is an int multiplier
+			FavorValue = Substring(CurFavor, 1, GetLength(CurFavor) - 1) as int
+
+			if (Substring(CurFavor, 0, 1) == "-")
+				FavorValue = -FavorValue;negate
 			Endif
+
 			Debug.Trace("Favor value changed to: " + FavorValue)
 		EndIf
-		j += 1
+
 	Endwhile
 	;End of making map
 
 	;Loop through all gifts, fore each type of gift, get npc's favors, and find if any of them in current 
-	int Len = GiftEditID.Length
-	int i = 0
+	int GiftIndex = GiftEditID.Length
 	int GiftFavorToAdd
-	While (i < Len)	
+	While (GiftIndex)
+		GiftIndex -= 1
 		;--------------------------------------Gifts loop---------------------------------------
 		;Current gift
-		Debug.Trace("Current gift: " + GiftEditID[i])
-		string CurGift = GiftEditID[i]
+		Debug.Trace("Current gift: " + GiftEditID[GiftIndex])
+		string CurGift = GiftEditID[GiftIndex]
 		Form CurGiftForm = GetFormByEditorID(CurGift)
 		Keyword[] GiftKeywords = CurGiftForm.GetKeywords()
 
-		int k = 0
-		int keywordLen = GiftKeywords.Length
 		if (JMap.hasKey(FavorGiftMap, CurGift))
 			;if this gift is in NPC's favor list
-			int GiftFavor = JMap.getInt(FavorGiftMap, CurGift) * JMap.getInt(GivenGiftLog, CurGift)
+			int GiftFavor = JMap.getInt(FavorGiftMap, CurGift) * JMap.getInt(GivenGiftLog, CurGift);Favor mult * count
 			GiftFavorToAdd += GiftFavor
 		Else
-			While (k < keywordLen)
+			int keywordindex = GiftKeywords.Length
+			While (keywordindex)
+				keywordindex -= 1
 				;-------------------------------Keywords loop---------------------------------------
-				Debug.Trace("Searching for keyword in NPC's interest list: " + GiftKeywords[k].GetString())
+				Debug.Trace("Searching for keyword in NPC's interest list: " + GiftKeywords[keywordindex].GetString())
 				;Current keyword
-				string CurKeyword = GiftKeywords[k].GetString()
+				string CurKeyword = GiftKeywords[keywordindex].GetString()
 				if (JMap.hasKey(FavorGiftMap, CurKeyword))
 					;If this keyword is in NPC's favor list
 					Debug.Trace(NPC.GetDisplayName() + " like " + CurKeyword + "!")
 					int CurKeywordFavorValue = JMap.getInt(FavorGiftMap, CurKeyword) * JMap.getInt(GivenGiftLog, CurGift)
 					GiftFavorToAdd += curkeywordfavorvalue
 				Endif
-				k += 1
 			EndWhile
 		Endif
-		i += 1
 	EndWhile
 
 	;Set gift favor sv for NPC
 	GiftFavorToAdd = (GiftFavorToAdd * (TotalValue / 100)) as int
+	;return GiftFavorToAdd
 	IncreaseGiftFavor(NPC, GiftFavorToAdd)
-	Debug.Trace("Gift favor added: " + GiftFavorToAdd + " ! ")
+	; Debug.Trace("Gift favor added: " + GiftFavorToAdd + " ! ")
+
 EndFunction
 
 String Function PrintNPCAffinity(Actor NPC) Global
@@ -153,12 +148,26 @@ String Function PrintNPCAffinity(Actor NPC) Global
 	return OutputString
 EndFunction
 
-Function AmplifyPlayerSpeech(float Magnitude = 10.0) Global
-    Spell BarterSpell = game.GetFormFromFile(0x002004, "SKYRO.esp") as spell
+float Function ClampF(float in, float Max, float Min) Global
+	If (in > max)
+		return Max
+	EndIf
 
-	BarterSpell.SetNthEffectMagnitude(0, Magnitude)
-	game.GetPlayer().AddSpell(BarterSpell)
+	If (in < Min)
+		return Min
+	EndIf
+EndFunction
 
+Function AmplifyPlayerSpeech(float Magnitude = 1.0) Global
+	Perk BarterPerk = game.GetFormFromFile(0x002007, "SKYRO.esp") as Perk
+
+	;selling
+	BarterPerk.SetNthEntryValue(0,0,2 - Magnitude)
+	;buying
+	BarterPerk.SetNthEntryValue(1,0,Magnitude)
+	game.GetPlayer().AddPerk(BarterPerk)
+
+	;Debug.MessageBox(BarterPerk.GetName() + " * " + Magnitude + ": " + "\n" + BarterPerk.GetNthEntryValue(0, 0) + "\n" + BarterPerk.GetNthEntryValue(1, 0))
 EndFunction
 
 ;-----------GETTER & SETTER---------------

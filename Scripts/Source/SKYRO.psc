@@ -64,10 +64,6 @@ Event OnQuestObjectiveStateChangedGlobal(Quest akQuest, string displayText, int 
 	;debug.trace(akQuest.GetID() + displayText + " [" + objectiveIndex + "] " + " completed")
 EndEvent
 
-Event OnActivateGlobal(ObjectReference ActivatorRef, ObjectReference ActivatedRef)
-	Debug.MessageBox(ActivatorRef.GetName() + " activate " + ActivatedRef.GetName())
-EndEvent
-
 Event OnKeyDown(int KeyPress)
 
 	if KeyPress == 34
@@ -77,14 +73,21 @@ Event OnKeyDown(int KeyPress)
 			if  (target.IsInCombat() || OUtils.IsChild(target) || target.isdead() || !(target.GetRace().HasKeyword(Keyword.GetKeyword("ActorTypeNPC"))))
 				return 
 			endif
-
+			IncreaseGiftFavor(Target, 10)
+			IncreaseQuestFavor(Target, 10)
         else
 		Endif
 	EndIf
 
 	If KeyPress == 35
         ;Debug.messagebox("Key Pressed!")
-        OnQuestCompletedEvent("0", "MS13", 0, game.getplayer() as form)
+		Perk BarterPerk = game.GetFormFromFile(0x002007, "SKYRO.esp") as Perk
+		If (game.GetPlayer().HasPerk(BarterPerk))
+			game.GetPlayer().Removeperk(BarterPerk)
+		else
+			game.GetPlayer().AddPerk(BarterPerk)
+		EndIf
+        ;OnQuestCompletedEvent("0", "MS13", 0, game.getplayer() as form)
 	Endif
 EndEvent
 
