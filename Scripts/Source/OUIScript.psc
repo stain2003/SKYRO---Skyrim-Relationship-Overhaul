@@ -755,6 +755,7 @@ function ProcessEvent(int page, int element)
 			int val = main.gift(npc)
 			SKYROMisc.GetAddedItems(npc)
 			main.ProcessGift(npc, val)
+			SKYROUtil.ProcessGifts(npc, val)
 			ExitDialogue()
 		EndIf
 	elseif page == PageInquire

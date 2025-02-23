@@ -15,6 +15,8 @@ Quest RecentQuest
 int RecentFailedQuest
 int RecentCompletedQuest
 
+Actor Property LastActivateActor auto
+
 string property SRKey_FactionFame = "SRK_FactionFame" auto
 string Property SRKey_QuestFavor = "SRK_QuestFavor" auto
 string property SRKey_GiftFavor = "SRK_GiftFavor" auto
@@ -60,6 +62,10 @@ Event OnQuestObjectiveStateChangedGlobal(Quest akQuest, string displayText, int 
 	EndIf
 	
 	;debug.trace(akQuest.GetID() + displayText + " [" + objectiveIndex + "] " + " completed")
+EndEvent
+
+Event OnActivateGlobal(ObjectReference ActivatorRef, ObjectReference ActivatedRef)
+	Debug.MessageBox(ActivatorRef.GetName() + " activate " + ActivatedRef.GetName())
 EndEvent
 
 Event OnKeyDown(int KeyPress)
@@ -133,9 +139,14 @@ EndEvent
 ;----------------------------------------------------FUNCTIONS-----------------------------------------------------
 Function InitEvents()
     DbSkseEvents.RegisterFormForGlobalEvent("OnQuestObjectiveStateChangedGlobal", self)
+	;DbSkseEvents.RegisterFormForGlobalEvent("OnActivateGlobal", self)
+
 	RegisterForModEvent("SRQuestCompleted", "OnQuestCompletedEvent")
 	RegisterForModEvent("SRQuestFailed", "OnQuestFailedEvent")
 	RegisterForModEvent("SRQuestObjectiveUpdated", "OnQuestObjectiveUpdatedEvent")
+	; Spell BarterSpell = game.GetFormFromFile(0x002004, "SKYRO.esp") as spell
+	; BarterSpell.SetNthEffectMagnitude(0, 0)
+	; game.GetPlayer().AddSpell(BarterSpell)
 EndFunction
 
 Function InitDebugFunction()

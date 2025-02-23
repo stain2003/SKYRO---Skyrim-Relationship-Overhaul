@@ -71,6 +71,15 @@ Function ProcessGifts(Actor NPC, float TotalValue) Global
 	string[] NPCFavorList = Split(NPCFavorString, "|")
 	Debug.Trace(NPC.GetDisplayName() + "'s Favor string: " + NPCFavorString)
 
+	; int GiftIndex = GiftEditID.Length
+	; If (GiftIndex == 0)
+	; 	Debug.Trace("You didn't give anything")
+	; Else
+	; 	While GiftIndex 
+	; 		GiftIndex -= 1
+	; 		Debug.Trace("You gave away " + GiftEditID[GiftIndex])
+	; 	EndWhile
+	; EndIf
 	;Make a map for Npc's favor gift type/keyword
 	Debug.Trace("Now making a map to store " + NPC.GetDisplayName() + "'s favor keywords of gifts!")
 	int FavorGiftMap = JMap.object()
@@ -120,6 +129,7 @@ Function ProcessGifts(Actor NPC, float TotalValue) Global
 				string CurKeyword = GiftKeywords[k].GetString()
 				if (JMap.hasKey(FavorGiftMap, CurKeyword))
 					;If this keyword is in NPC's favor list
+					Debug.Trace(NPC.GetDisplayName() + " like " + CurKeyword + "!")
 					int CurKeywordFavorValue = JMap.getInt(FavorGiftMap, CurKeyword) * JMap.getInt(GivenGiftLog, CurGift)
 					GiftFavorToAdd += curkeywordfavorvalue
 				Endif
@@ -141,6 +151,14 @@ String Function PrintNPCAffinity(Actor NPC) Global
 	OutputString += "\nGift Favor: " + GetNPCFavor(NPC, GetMainScript().SRKey_GiftFavor)
 	OutputString += "\nFaction Fame: " + GetNPCFactionFavor(NPC)
 	return OutputString
+EndFunction
+
+Function AmplifyPlayerSpeech(float Magnitude = 10.0) Global
+    Spell BarterSpell = game.GetFormFromFile(0x002004, "SKYRO.esp") as spell
+
+	BarterSpell.SetNthEffectMagnitude(0, Magnitude)
+	game.GetPlayer().AddSpell(BarterSpell)
+
 EndFunction
 
 ;-----------GETTER & SETTER---------------
@@ -219,4 +237,14 @@ endfunction
 
 bool Function isDebugEnable() Global
 	return (GetExternalInt("SKYRO.esp", 0x001001) == 1)
+EndFunction
+
+int Function GetNPCTotalFavor(Actor NPC) Global
+
+	int FavorPoint
+	FavorPoint += GetNPCFavor(NPC, GetMainScript().SRKey_QuestFavor)
+	FavorPoint += GetNPCFavor(NPC, GetMainScript().SRKey_GiftFavor)
+	FavorPoint += GetNPCFactionFavor(NPC)
+
+	Return FavorPoint
 EndFunction
